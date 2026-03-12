@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropBeam</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <header class="nav">
+        <div class="logo">
+
+            <div class="dots">
+                <span class="blue"></span>
+                <span class="red"></span>
+                <span class="yellow"></span>
+                <span class="green"></span>
+            </div>
+
+            <span class="logo-text">
+                <a href="index.html">DropBeam</a>
+            </span>
+
+        </div>
+
+        <nav>
+            <a href="#transfer">Transfer</a>
+            <a href="#about">About</a>
+            <a href="#developers">Developers</a>
+            <button id="themeToggle" type="button">🌙</button>
+        </nav>
+
+    </header>
+
+
+    <section class="hero">
+
+        <h1>
+            Send files,<br>
+            <span class="gradient">peer to peer.</span>
+        </h1>
+
+        <p>
+            No signup. No cloud storage. Files travel directly between browsers.
+        </p>
+
+        <button type="button" onclick="scrollToUser()">Start Transfer</button>
+
+    </section>
+
+
+    <section id="userSetup" class="user-section">
+
+        <h2>Choose a Username</h2>
+
+        <p>This username will identify you during transfers.</p>
+
+        <input id="usernameInput" type="text" placeholder="Enter unique username">
+
+        <button type="button" onclick="saveUsername()">Continue</button>
+
+        <p id="userError"></p>
+
+    </section>
+
+
+    <section id="transfer" class="transfer hidden">
+
+        <h2>Transfer Files</h2>
+
+        <div class="mode-selector">
+        <button id="modeUpload" class="active" onclick="switchMode('upload')">1. Upload File (Cloud)</button>
+        <button id="modePeer" onclick="switchMode('peer')">2. Peer Room (Direct P2P)</button>
+    </div>
+
+    <div class="transfer-box">
+        <div id="uploadContainer">
+            <div id="dropZone" class="drop-zone">
+                <p>Drag & Drop File to Cloud Link</p>
+                <button id="browseBtn" type="button">Browse File</button>
+                <input type="file" id="fileInput" hidden>
+            </div>
+        </div>
+
+        <div id="peerContainer" class="hidden">
+            <div class="peer-setup">
+                <div class="peer-card">
+                    <h3>Create a Room</h3>
+                    <p>Start a session and wait for a partner.</p>
+                    <button onclick="initP2P('create')">Create Room</button>
+                </div>
+                <div class="or-divider">OR</div>
+                <div class="peer-card">
+                    <h3>Join a Room</h3>
+                    <input type="text" id="joinRoomId" placeholder="Enter Room ID">
+                    <button onclick="initP2P('join')">Join Room</button>
+                </div>
+            </div>
+            
+            <div id="p2pStatus" class="p2p-status hidden">
+                <button type="button" class="back-btn" onclick="undoP2P()">← Back</button>
+
+                <div class="connection-dot"></div>
+                <span id="statusText">Waiting for peer...</span>
+                <p id="peerRoomDisplay" style="font-weight: bold; margin-top: 10px;"></p>
+                
+                <input type="file" id="p2pFileInput" class="hidden">
+                <button id="p2pSendBtn" disabled onclick="document.getElementById('p2pFileInput').click()">Select & Send Directly</button>
+            </div>
+        </div>
+            <div id="fileCard" class="file-card hidden">
+              <button id="closeBtn" type="button" class="close-btn" onclick="cancelTransfer()">&times;</button>
+
+              <p id="fileName"></p>
+              <p id="fileSize"></p>
+    
+              <p id="timer" style="font-size: 12px; color: #EA4335;"></p>
+
+              <div class="share">
+                <input id="shareLink" type="text" readonly>
+                <button id="copyBtn" type="button">Copy</button>
+              </div>
+
+              <div class="share-area">
+                <canvas id="qr"></canvas>
+                <div class="share-icons">
+                  <a id="whatsappShare" href="#" target="_blank"><img src="icons/whatsapp.png" alt="WhatsApp"></a>
+                  <a id="facebookShare" href="#" target="_blank"><img src="icons/facebook.png" alt="Facebook"></a>
+                  <a id="gmailShare" href="#" target="_blank"><img src="icons/gmail.png" alt="Gmail"></a>
+                  <a id="linkedinShare" href="#" target="_blank"><img src="icons/linkedin.png" alt="LinkedIn"></a>
+                </div>
+              </div>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="about" class="about-page">
+
+        <h1 class="about-heading">About</h1>
+
+        <div class="about-container">
+
+            <div class="about-card">
+
+                <div class="highlight">MAYANK</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Ducimus aliquid soluta quis commodi voluptates perspiciatis
+                    vel nam tenetur.
+                </p>
+
+            </div>
+
+
+            <div class="about-card">
+
+                <div class="highlight">RITWIK</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Quasi molestias consequuntur distinctio officia animi sequi
+                    eaque ipsum iusto!
+                </p>
+
+            </div>
+
+
+            <div class="about-card">
+
+                <div class="highlight">ADARSH</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Numquam vel vero harum ab nihil et atque aperiam possimus
+                    aliquid maiores?
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="developers" class="developers">
+
+        <h2>Developers</h2>
+
+        <div class="gdg-logo">
+            <img src="gdg-logo.png" alt="GDG Logo">
+        </div>
+
+
+        <div class="dev-grid">
+
+            <div class="dev-card">
+                <img src="dev1.jpg" alt="Developer 1">
+                <h3>Developer 1</h3>
+                <p>dev1@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev2.jpg" alt="Developer 2">
+                <h3>Developer 2</h3>
+                <p>dev2@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev3.jpg" alt="Developer 3">
+                <h3>Developer 3</h3>
+                <p>dev3@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev4.jpg" alt="Developer 4">
+                <h3>Developer 4</h3>
+                <p>dev4@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev5.jpg" alt="Developer 5">
+                <h3>Developer 5</h3>
+                <p>dev5@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev6.jpg" alt="Developer 6">
+                <h3>Developer 6</h3>
+                <p>dev6@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev7.jpg" alt="Developer 7">
+                <h3>Developer 7</h3>
+                <p>dev7@email.com</p>
+            </div>
+
+        </div>
+
+
+        <p class="contact-info">Contact us: contact@dropbeam.dev</p>
+
+    </section>
+
+
+    <div id="toast">Link Copied!</div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
