@@ -3,7 +3,7 @@ const themeToggle = document.getElementById("themeToggle");
 if (localStorage.getItem("theme") === "light") {
     document.body.classList.add("light");
 }
-
+//T1
 themeToggle.onclick = () => {
     document.body.classList.toggle("light");
     localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
