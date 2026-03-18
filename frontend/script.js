@@ -2,12 +2,13 @@
 const themeToggle = document.getElementById("themeToggle");
 if (localStorage.getItem("theme") === "light") {
     document.body.classList.add("light");
+    themeToggle.checked = true;
 }
-//T1
-themeToggle.onclick = () => {
-    document.body.classList.toggle("light");
-    localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
-};
+themeToggle.addEventListener("change", () => {
+    const isLight = themeToggle.checked;
+    document.body.classList.toggle("light", isLight);
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+});
 
 // --- USERNAME SYSTEM ---
 function saveUsername() {
@@ -212,6 +213,189 @@ document.getElementById("copyBtn").onclick = () => {
     setTimeout(() => { toast.style.display = "none"; }, 2000);
 };
 
+
 function scrollToUser() {
     document.getElementById("userSetup").scrollIntoView({ behavior: "smooth" });
 }
+
+// ─── GDG LOGO ANIMATION ───────────────────────────────────────────────────────
+(function () {
+    function gdgSpring(from, to, stiffness, damping, mass) {
+        stiffness = stiffness || 180; damping = damping || 20; mass = mass || 1;
+        const diff = to - from;
+        const w0 = Math.sqrt(stiffness / mass);
+        const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+        if (zeta < 1) {
+            const wd = w0 * Math.sqrt(1 - zeta * zeta);
+            return t => to - Math.exp(-zeta * w0 * t) * (diff * Math.cos(wd * t) + (diff * zeta * w0 / wd) * Math.sin(wd * t));
+        }
+        return t => to - diff * Math.exp(-w0 * t) * (1 + w0 * t);
+    }
+
+    const easeOut = t => 1 - Math.pow(1 - t, 3);
+    const easeIn  = t => t * t * t;
+    function anim(duration, tickFn, doneFn) {
+        let start = null;
+        function f(ts) {
+            if (!start) start = ts;
+            const t = Math.min((ts - start) / duration, 1);
+            tickFn(t);
+            if (t < 1) requestAnimationFrame(f);
+            else if (doneFn) doneFn();
+        }
+        requestAnimationFrame(f);
+    }
+
+    const gdgDots = {
+        blue:   document.getElementById('dot-blue'),
+        red:    document.getElementById('dot-red'),
+        yellow: document.getElementById('dot-yellow'),
+        green:  document.getElementById('dot-green'),
+    };
+    const gdgLogoSvg = document.getElementById('logo-svg');
+    const gdgCaps = {
+        blue:         document.getElementById('cap-blue'),
+        red:          document.getElementById('cap-red'),
+        yellow:       document.getElementById('cap-yellow'),
+        green:        document.getElementById('cap-green'),
+        'blue-out':   document.getElementById('cap-blue-out'),
+        'red-out':    document.getElementById('cap-red-out'),
+        'yellow-out': document.getElementById('cap-yellow-out'),
+        'green-out':  document.getElementById('cap-green-out'),
+    };
+
+    const KEYS = ['blue', 'red', 'yellow', 'green'];
+
+    const dotHome = {
+        blue:   { x: 85  + 14, y: 110 },
+        red:    { x: 127 + 14, y: 110 },
+        yellow: { x: 169 + 14, y: 110 },
+        green:  { x: 211 + 14, y: 110 },
+    };
+    const capTarget = {
+        blue:   { x: 118, y: 91  },
+        red:    { x: 118, y: 129 },
+        yellow: { x: 222, y: 91  },
+        green:  { x: 222, y: 129 },
+    };
+
+    // Compute line lengths
+    const gdgLengths = {};
+    KEYS.forEach(k => {
+        const el = gdgCaps[k];
+        const dx = parseFloat(el.getAttribute('x2')) - parseFloat(el.getAttribute('x1'));
+        const dy = parseFloat(el.getAttribute('y2')) - parseFloat(el.getAttribute('y1'));
+        gdgLengths[k] = Math.sqrt(dx * dx + dy * dy);
+        [gdgCaps[k], gdgCaps[k + '-out']].forEach(e => {
+            e.style.strokeDasharray  = gdgLengths[k];
+            e.style.strokeDashoffset = gdgLengths[k];
+        });
+    });
+
+    function setDotPos(key, x, y, scale) {
+        scale = scale === undefined ? 1 : scale;
+        const dx = x - dotHome[key].x;
+        const dy = y - dotHome[key].y;
+        gdgDots[key].style.transform = `translateY(-50%) translate(${dx}px,${dy}px) scale(${scale})`;
+    }
+    function resetDot(key) { gdgDots[key].style.transform = 'translateY(-50%)'; }
+
+    // Phase 1 – bounce
+    function startBounce(duration, onDone) {
+        const delays = { blue: 0, red: 0.15, yellow: 0.30, green: 0.45 };
+        const amp = 32; let start = null;
+        function frame(ts) {
+            if (!start) start = ts;
+            const elapsed = (ts - start) / 1000;
+            KEYS.forEach(k => {
+                const t = elapsed - delays[k];
+                if (t < 0) return;
+                const bounce = -Math.abs(Math.sin(Math.PI * t * 2.8)) * amp * Math.exp(-1.2 * t);
+                setDotPos(k, dotHome[k].x, dotHome[k].y + bounce);
+            });
+            if (elapsed < duration) requestAnimationFrame(frame);
+            else { KEYS.forEach(k => resetDot(k)); if (onDone) onDone(); }
+        }
+        requestAnimationFrame(frame);
+    }
+
+    // Phase 2 – morph dots → chevron
+    function morphToLogo(onDone) {
+        gdgLogoSvg.style.opacity = '1';
+        const stagger = { blue: 0, red: 80, yellow: 50, green: 130 };
+        let done = 0;
+        KEYS.forEach(k => {
+            setTimeout(() => {
+                const from = dotHome[k], to = capTarget[k];
+                const sx = gdgSpring(from.x, to.x, 220, 22);
+                const sy = gdgSpring(from.y, to.y, 220, 22);
+                anim(700, t => {
+                    setDotPos(k, sx(t * 0.9), sy(t * 0.9), 1 - easeIn(t) * 0.9);
+                }, () => {
+                    gdgDots[k].style.opacity = '0';
+                    if (++done === 4) drawCaps(onDone);
+                });
+            }, stagger[k]);
+        });
+    }
+
+    function drawCaps(onDone) {
+        const stagger = { blue: 0, red: 60, yellow: 40, green: 100 };
+        let done = 0;
+        KEYS.forEach(k => {
+            setTimeout(() => {
+                anim(500, t => {
+                    const v = gdgLengths[k] * (1 - easeOut(t));
+                    gdgCaps[k].style.strokeDashoffset = v;
+                    gdgCaps[k + '-out'].style.strokeDashoffset = v;
+                }, () => { if (++done === 4 && onDone) onDone(); });
+            }, stagger[k]);
+        });
+    }
+
+    // Phase 3 – hold
+    // Phase 4 – unmorph
+    function unmorphToDots(onDone) {
+        const stagger = { blue: 100, red: 40, yellow: 60, green: 0 };
+        let done = 0;
+        KEYS.forEach(k => {
+            setTimeout(() => {
+                anim(400, t => {
+                    const v = gdgLengths[k] * easeIn(t);
+                    gdgCaps[k].style.strokeDashoffset = v;
+                    gdgCaps[k + '-out'].style.strokeDashoffset = v;
+                }, () => { if (++done === 4) emergeDots(onDone); });
+            }, stagger[k]);
+        });
+    }
+
+    function emergeDots(onDone) {
+        gdgLogoSvg.style.opacity = '0';
+        const stagger = { blue: 0, red: 70, yellow: 40, green: 110 };
+        let done = 0;
+        KEYS.forEach(k => {
+            gdgDots[k].style.opacity = '1';
+            setTimeout(() => {
+                const from = capTarget[k], to = dotHome[k];
+                const sx = gdgSpring(from.x, to.x, 200, 18);
+                const sy = gdgSpring(from.y, to.y, 200, 18);
+                anim(650, t => {
+                    setDotPos(k, sx(t * 0.9), sy(t * 0.9), easeOut(t));
+                }, () => { resetDot(k); if (++done === 4 && onDone) onDone(); });
+            }, stagger[k]);
+        });
+    }
+
+    function gdgLoop() {
+        KEYS.forEach(k => {
+            gdgDots[k].style.opacity = '1';
+            resetDot(k);
+            gdgCaps[k].style.strokeDashoffset = gdgLengths[k];
+            gdgCaps[k + '-out'].style.strokeDashoffset = gdgLengths[k];
+        });
+        gdgLogoSvg.style.opacity = '0';
+        startBounce(2.2, () => morphToLogo(() => setTimeout(() => unmorphToDots(() => setTimeout(gdgLoop, 400)), 1200)));
+    }
+
+    setTimeout(gdgLoop, 300);
+})();

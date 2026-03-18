@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DropBeam</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+
+<body>
+
+    <header class="nav">
+        <div class="logo">
+
+            <div class="gdg-anim-wrap">
+                <div class="gdg-stage" id="gdg-stage">
+                    <div class="gdg-dot" id="dot-blue"></div>
+                    <div class="gdg-dot" id="dot-red"></div>
+                    <div class="gdg-dot" id="dot-yellow"></div>
+                    <div class="gdg-dot" id="dot-green"></div>
+                    <svg class="gdg-logo-svg" id="logo-svg" viewBox="0 0 340 220" xmlns="http://www.w3.org/2000/svg">
+                        <line class="cap-outline" id="cap-blue-out" x1="148" y1="72" x2="88" y2="110" />
+                        <line class="cap-outline" id="cap-red-out" x1="148" y1="148" x2="88" y2="110" />
+                        <line class="cap-outline" id="cap-yellow-out" x1="192" y1="72" x2="252" y2="110" />
+                        <line class="cap-outline" id="cap-green-out" x1="192" y1="148" x2="252" y2="110" />
+                        <line class="cap" id="cap-blue" x1="148" y1="72" x2="88" y2="110" />
+                        <line class="cap" id="cap-red" x1="148" y1="148" x2="88" y2="110" />
+                        <line class="cap" id="cap-yellow" x1="192" y1="72" x2="252" y2="110" />
+                        <line class="cap" id="cap-green" x1="192" y1="148" x2="252" y2="110" />
+                    </svg>
+                </div>
+            </div>
+
+            <span class="logo-text">
+                <a href="index.html">DropBeam</a>
+            </span>
+
+        </div>
+
+        <nav>
+            <a href="#transfer">Transfer</a>
+            <a href="#about">About</a>
+            <a href="#developers">Developers</a>
+            <label class="switch">
+                <input id="themeToggle" type="checkbox" />
+                <span class="slider">
+                    <div class="star star_1"></div>
+                    <div class="star star_2"></div>
+                    <div class="star star_3"></div>
+                    <svg viewBox="0 0 16 16" class="cloud_1 cloud">
+                        <path transform="matrix(.77976 0 0 .78395-299.99-418.63)" fill="#fff"
+                            d="m391.84 540.91c-.421-.329-.949-.524-1.523-.524-1.351 0-2.451 1.084-2.485 2.435-1.395.526-2.388 1.88-2.388 3.466 0 1.874 1.385 3.423 3.182 3.667v.034h12.73v-.006c1.775-.104 3.182-1.584 3.182-3.395 0-1.747-1.309-3.186-2.994-3.379.007-.106.011-.214.011-.322 0-2.707-2.271-4.901-5.072-4.901-2.073 0-3.856 1.202-4.643 2.925">
+                        </path>
+                    </svg>
+                </span>
+            </label>
+        </nav>
+
+    </header>
+
+
+    <section class="hero">
+
+        <h1>
+            Send files,<br>
+            <span class="gradient">peer to peer.</span>
+        </h1>
+
+        <p>
+            No signup. No cloud storage. Files travel directly between browsers.
+        </p>
+
+        <button type="button" onclick="scrollToUser()">Start Transfer</button>
+
+    </section>
+
+
+    <section id="userSetup" class="user-section">
+
+        <h2>Choose a Username</h2>
+
+        <p>This username will identify you during transfers.</p>
+
+        <input id="usernameInput" type="text" placeholder="Enter unique username">
+
+        <button type="button" onclick="saveUsername()">Continue</button>
+
+        <p id="userError"></p>
+
+    </section>
+
+
+    <section id="transfer" class="transfer hidden">
+
+        <h2>Transfer Files</h2>
+
+        <div class="mode-selector">
+            <button id="modeUpload" class="active" onclick="switchMode('upload')">1. Upload File (Cloud)</button>
+            <button id="modePeer" onclick="switchMode('peer')">2. Peer Room (Direct P2P)</button>
+        </div>
+
+        <div class="transfer-box">
+            <div id="uploadContainer">
+                <div id="dropZone" class="drop-zone">
+                    <p>Drag & Drop File to Cloud Link</p>
+                    <button id="browseBtn" type="button">Browse File</button>
+                    <input type="file" id="fileInput" hidden>
+                </div>
+            </div>
+
+            <div id="peerContainer" class="hidden">
+                <div class="peer-setup">
+                    <div class="peer-card">
+                        <h3>Create a Room</h3>
+                        <p>Start a session and wait for a partner.</p>
+                        <button onclick="initP2P('create')">Create Room</button>
+                    </div>
+                    <div class="or-divider">OR</div>
+                    <div class="peer-card">
+                        <h3>Join a Room</h3>
+                        <input type="text" id="joinRoomId" placeholder="Enter Room ID">
+                        <button onclick="initP2P('join')">Join Room</button>
+                    </div>
+                </div>
+
+                <div id="p2pStatus" class="p2p-status hidden">
+                    <button type="button" class="back-btn" onclick="undoP2P()">← Back</button>
+
+                    <div class="connection-dot"></div>
+                    <span id="statusText">Waiting for peer...</span>
+                    <p id="peerRoomDisplay" style="font-weight: bold; margin-top: 10px;"></p>
+
+                    <input type="file" id="p2pFileInput" class="hidden">
+                    <button id="p2pSendBtn" disabled onclick="document.getElementById('p2pFileInput').click()">Select &
+                        Send Directly</button>
+                </div>
+            </div>
+            <div id="fileCard" class="file-card hidden">
+                <button id="closeBtn" type="button" class="close-btn" onclick="cancelTransfer()">&times;</button>
+
+                <p id="fileName"></p>
+                <p id="fileSize"></p>
+
+                <p id="timer" style="font-size: 12px; color: #EA4335;"></p>
+
+                <div class="share">
+                    <input id="shareLink" type="text" readonly>
+                    <button id="copyBtn" type="button">Copy</button>
+                </div>
+
+                <div class="share-area">
+                    <canvas id="qr"></canvas>
+                    <div class="share-icons">
+                        <a id="whatsappShare" href="#" target="_blank"><img src="icons/whatsapp.png" alt="WhatsApp"></a>
+                        <a id="facebookShare" href="#" target="_blank"><img src="icons/facebook.png" alt="Facebook"></a>
+                        <a id="gmailShare" href="#" target="_blank"><img src="icons/gmail.png" alt="Gmail"></a>
+                        <a id="linkedinShare" href="#" target="_blank"><img src="icons/linkedin.png" alt="LinkedIn"></a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="about" class="about-page">
+
+        <h1 class="about-heading">About</h1>
+
+        <div class="about-container">
+
+            <div class="about-card">
+
+                <div class="highlight">MAYANK</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Ducimus aliquid soluta quis commodi voluptates perspiciatis
+                    vel nam tenetur.
+                </p>
+
+            </div>
+
+
+            <div class="about-card">
+
+                <div class="highlight">RITWIK</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Quasi molestias consequuntur distinctio officia animi sequi
+                    eaque ipsum iusto!
+                </p>
+
+            </div>
+
+
+            <div class="about-card">
+
+                <div class="highlight">ADARSH</div>
+
+                <p>
+                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
+                    Numquam vel vero harum ab nihil et atque aperiam possimus
+                    aliquid maiores?
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section id="developers" class="developers">
+
+        <h2>Developers</h2>
+
+        <div class="gdg-logo">
+            <img src="gdg-logo.png" alt="GDG Logo">
+        </div>
+
+
+        <div class="dev-grid">
+
+            <div class="dev-card">
+                <img src="dev1.jpg" alt="Developer 1">
+                <h3>Developer 1</h3>
+                <p>dev1@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev2.jpg" alt="Developer 2">
+                <h3>Developer 2</h3>
+                <p>dev2@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev3.jpg" alt="Developer 3">
+                <h3>Developer 3</h3>
+                <p>dev3@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev4.jpg" alt="Developer 4">
+                <h3>Developer 4</h3>
+                <p>dev4@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev5.jpg" alt="Developer 5">
+                <h3>Developer 5</h3>
+                <p>dev5@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev6.jpg" alt="Developer 6">
+                <h3>Developer 6</h3>
+                <p>dev6@email.com</p>
+            </div>
+
+            <div class="dev-card">
+                <img src="dev7.jpg" alt="Developer 7">
+                <h3>Developer 7</h3>
+                <p>dev7@email.com</p>
+            </div>
+
+        </div>
+
+
+        <p class="contact-info">Contact us: contact@dropbeam.dev</p>
+
+    </section>
+
+
+    <div id="toast">Link Copied!</div>
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "zap-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker backend for Zap (replaces Node.js backend for CF deployment)",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.71.0"
+  }
+}
