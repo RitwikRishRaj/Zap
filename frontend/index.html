@@ -8,8 +8,8 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Instrument+Serif:ital@0;1&family=Open+Sans:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
 
@@ -73,7 +73,7 @@
         </h1>
 
         <p>
-            No signup. No cloud storage. Files travel directly between browsers.
+            No signup. No hassle. Just two browsers and a vanishing link.
         </p>
 
         <button type="button" onclick="scrollToUser()">Start Transfer</button>
@@ -81,136 +81,286 @@
     </section>
 
 
-    <section id="userSetup" class="user-section">
-
-        <h2>Choose a Username</h2>
-
-        <p>This username will identify you during transfers.</p>
-
-        <input id="usernameInput" type="text" placeholder="Enter unique username">
-
-        <button type="button" onclick="saveUsername()">Continue</button>
-
-        <p id="userError"></p>
-
-    </section>
-
-
     <section id="transfer" class="transfer hidden">
 
-        <h2>Transfer Files</h2>
-
-        <div class="mode-selector">
-            <button id="modeUpload" class="active" onclick="switchMode('upload')">1. Upload File (Cloud)</button>
-            <button id="modePeer" onclick="switchMode('peer')">2. Peer Room (Direct P2P)</button>
+        <div class="transfer-header">
+            <h2>Transfer Files</h2>
+            <p class="transfer-sub">Choose your transfer method below.</p>
         </div>
 
-        <div class="transfer-box">
+        <!-- Name Bar -->
+        <div class="name-bar" id="nameBar">
+            <div class="name-display" id="nameDisplay">
+                <span class="name-avatar" id="nameAvatar"></span>
+                <span class="name-label" id="nameLabel"></span>
+                <button class="name-edit-btn" id="nameEditBtn" title="Edit name" onclick="startEditName()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+            </div>
+            <div class="name-edit" id="nameEdit" style="display:none">
+                <input id="nameInput" class="name-input" type="text" placeholder="Your name" maxlength="32" autocomplete="off">
+                <button class="name-save-btn" onclick="saveName()">Save</button>
+                <button class="name-cancel-btn" id="nameCancelBtn" onclick="cancelEditName()">Cancel</button>
+            </div>
+            <p class="name-error" id="nameError"></p>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="mode-tabs" id="tabGroup">
+            <div class="tabs-slider" id="slider"></div>
+            <button class="mode-tab active" id="modePeer" data-idx="0" onclick="switchMode('peer')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Direct P2P
+            </button>
+            <button class="mode-tab" id="modeUpload" data-idx="1" onclick="switchMode('upload')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 5 0 1 0 3 16.3"/></svg>
+                Cloud Hold
+            </button>
+        </div>
+
+        <div class="transfer-panel">
+
+            <!-- ── CLOUD UPLOAD MODE ─────────────────────────── -->
             <div id="uploadContainer">
-                <div id="dropZone" class="drop-zone">
-                    <p>Drag & Drop File to Cloud Link</p>
-                    <button id="browseBtn" type="button">Browse File</button>
-                    <input type="file" id="fileInput" hidden>
+
+                <!-- Step 1: New Room Panel -->
+                <div class="panel" id="cloudSetup">
+                  <div class="tab-row">
+                    <div class="tab-slider" id="tabSlider"></div>
+                    <button class="tab-btn active" id="tabCreate" onclick="switchPanelTab('create')">Create</button>
+                    <button class="tab-btn" id="tabJoin" onclick="switchPanelTab('join')">Join</button>
+                    <button class="tab-btn" id="tabRooms" onclick="switchPanelTab('rooms')">
+                      Rooms <span class="badge" id="roomsBadge">0</span>
+                    </button>
+                  </div>
+
+                  <div class="views">
+                    <!-- CREATE -->
+                    <div class="view active" id="viewCreate">
+                      <span class="view-label">New room</span>
+
+                      <div class="expiry-block">
+                        <div class="field-label">Expires in</div>
+                        <div class="expiry-display">
+                          <span class="expiry-num" id="expiryNum">4</span>
+                          <span class="expiry-unit">hrs</span>
+                        </div>
+                        <div class="slider-wrap">
+                          <div class="s-track-bg"></div>
+                          <div class="s-track-fill" id="trackFill"></div>
+                          <input type="range" id="expirySlider" min="1" max="24" value="4" step="1"/>
+                        </div>
+                        <div class="expiry-ticks">
+                          <span>1h</span><span>6h</span><span>12h</span><span>18h</span><span>24h</span>
+                        </div>
+                      </div>
+
+                      <div class="divider"></div>
+                      <button class="btn-primary" onclick="initCloudRoom()">Create room</button>
+                      <div class="info-row">
+                        <div class="info-dot"></div>
+                        <span>Room auto-deletes after expiry. Files are removed from R2.</span>
+                      </div>
+                    </div>
+
+                    <!-- JOIN -->
+                    <div class="view" id="viewJoin">
+                      <span class="view-label">Enter room</span>
+                      <div class="field">
+                        <input class="code-input" type="text" id="joinCloudCode" placeholder="XXXXXX" maxlength="6"
+                          autocomplete="off" spellcheck="false"
+                          oninput="this.value=this.value.replace(/[^a-zA-Z0-9]/g,'').toUpperCase().slice(0,6)"/>
+                        <span class="code-hint">6-character room code</span>
+                      </div>
+                      <button class="btn-primary" onclick="joinCloudRoom()">Join room</button>
+                      <div class="info-row">
+                        <div class="info-dot"></div>
+                        <span>Ask the room creator for the code.</span>
+                      </div>
+                    </div>
+
+                    <!-- ROOMS -->
+                    <div class="view" id="viewRooms">
+                      <span class="view-label">Active rooms</span>
+                      <div class="rooms-list" id="activeRoomsList"></div>
+                    </div>
+                  </div>
                 </div>
+
+                <!-- Step 2: Room active — upload files -->
+                <div id="cloudRoomActive" class="hidden">
+                    <div class="cloud-room-bar">
+                        <div class="cloud-room-bar-top">
+                            <button class="back-btn" onclick="exitCloudRoom()">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                Back
+                            </button>
+                            <div class="cloud-room-info">
+                                <span class="cloud-room-label">Room Code</span>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span class="cloud-room-code" id="cloudRoomCode"></span>
+                                    <button class="copy-code-btn" id="copyCodeBtn" title="Copy code">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                          <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+                                          <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="cloud-room-expiry" id="cloudRoomExpiry"></div>
+                        </div>
+
+                        <!-- Share link row moved here -->
+                        <div class="share-link-row hidden" id="shareLinkRow">
+                            <input id="shareLink" type="text" readonly class="share-input" placeholder="Share link">
+                            <button id="copyBtn" type="button" class="copy-btn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                Copy Link
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="dropZone" class="drop-zone">
+                        <input type="file" id="fileInput" multiple>
+                        <div class="dz-inner" id="dzInner">
+                            <div class="upload-arrow">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <div class="dz-text">
+                                <div class="dz-title">Drag or drop your files here</div>
+                                <div class="dz-sub">or <span>click to browse</span> from your device</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="files-list" id="filesList" style="margin-top: 1rem;"></div>
+
+                    <div class="footer-row">
+                        <span class="badge">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            Max 2 GB per file · Max 10 files
+                        </span>
+                    </div>
+
+
+
+                    <button class="upload-btn" id="uploadBtn">Upload Files</button>
+                </div>
+
             </div>
 
+            <!-- ── DOWNLOAD VIEW (join room / ?room= param) ──── -->
+            <div id="downloadContainer" class="hidden">
+                <div class="dl-room-header">
+                    <div class="dl-room-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                    <div>
+                        <div class="dl-room-name" id="dlRoomName">Loading…</div>
+                        <div class="dl-room-meta" id="dlRoomMeta"></div>
+                    </div>
+                </div>
+                <div class="dl-files-list" id="dlFilesList"></div>
+                <button class="dl-back-btn" onclick="exitDownloadView()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                    Back
+                </button>
+            </div>
+
+            <!-- ── P2P MODE ────────────────────────────────────── -->
             <div id="peerContainer" class="hidden">
-                <div class="peer-setup">
-                    <div class="peer-card">
-                        <h3>Create a Room</h3>
-                        <p>Start a session and wait for a partner.</p>
-                        <button onclick="initP2P('create')">Create Room</button>
+
+                <!-- Step 1: Upload files first -->
+                <div id="p2pUploadStep">
+                    <div id="p2pDropZone" class="drop-zone">
+                        <input type="file" id="p2pFileInput" multiple>
+                        <div class="dz-inner" id="p2pDzInner">
+                            <div class="upload-arrow">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <div class="dz-text">
+                                <div class="dz-title">Select files to share via P2P</div>
+                                <div class="dz-sub">Files stay on your device until receiver accepts</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="or-divider">OR</div>
-                    <div class="peer-card">
-                        <h3>Join a Room</h3>
-                        <input type="text" id="joinRoomId" placeholder="Enter Room ID">
-                        <button onclick="initP2P('join')">Join Room</button>
+                    <div class="files-list" id="p2pFilesList" style="margin-top: 1rem;"></div>
+
+                    <div class="footer-row">
+                        <span class="badge">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            Direct browser-to-browser transfer
+                        </span>
+                    </div>
+
+                    <button class="upload-btn" id="p2pCreateBtn">Create Share Link</button>
+                </div>
+
+                <!-- Step 2: Show share link + QR (sender waiting) -->
+                <div id="p2pShareStep" class="hidden">
+                    <div class="p2p-share-card">
+                        <div class="p2p-share-header">
+                            <div class="pulse-dot-wrap">
+                                <div class="pulse-ring"></div>
+                                <div class="pulse-dot"></div>
+                            </div>
+                            <div>
+                                <div class="p2p-share-title">Waiting for receiver…</div>
+                                <div class="p2p-share-sub" id="p2pFileCount"></div>
+                            </div>
+                        </div>
+
+                        <canvas id="p2pQR" class="p2p-qr"></canvas>
+
+                        <div class="share-link-row">
+                            <input id="p2pShareLink" type="text" readonly class="share-input">
+                            <button id="p2pCopyBtn" type="button" class="copy-btn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                Copy
+                            </button>
+                        </div>
+
+                        <button class="p2p-cancel-btn" onclick="cancelP2PShare()">Cancel</button>
                     </div>
                 </div>
 
-                <div id="p2pStatus" class="p2p-status hidden">
-                    <button type="button" class="back-btn" onclick="undoP2P()">← Back</button>
+                <!-- Step 3: Receiver view (file list + accept) -->
+                <div id="p2pReceiveStep" class="hidden">
+                    <div class="p2p-receive-card">
+                        <div class="p2p-receive-header">
+                            <div class="p2p-receive-icon">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>
+                            </div>
+                            <div>
+                                <div class="p2p-receive-title" id="p2pSenderName">Loading…</div>
+                                <div class="p2p-receive-sub" id="p2pReceiveFileCount"></div>
+                            </div>
+                        </div>
 
-                    <div class="connection-dot"></div>
-                    <span id="statusText">Waiting for peer...</span>
-                    <p id="peerRoomDisplay" style="font-weight: bold; margin-top: 10px;"></p>
+                        <div class="dl-files-list" id="p2pReceiveFilesList"></div>
 
-                    <input type="file" id="p2pFileInput" class="hidden">
-                    <button id="p2pSendBtn" disabled onclick="document.getElementById('p2pFileInput').click()">Select &
-                        Send Directly</button>
-                </div>
-            </div>
-            <div id="fileCard" class="file-card hidden">
-                <button id="closeBtn" type="button" class="close-btn" onclick="cancelTransfer()">&times;</button>
-
-                <p id="fileName"></p>
-                <p id="fileSize"></p>
-
-                <p id="timer" style="font-size: 12px; color: #EA4335;"></p>
-
-                <div class="share">
-                    <input id="shareLink" type="text" readonly>
-                    <button id="copyBtn" type="button">Copy</button>
-                </div>
-
-                <div class="share-area">
-                    <canvas id="qr"></canvas>
-                    <div class="share-icons">
-                        <a id="whatsappShare" href="#" target="_blank"><img src="icons/whatsapp.png" alt="WhatsApp"></a>
-                        <a id="facebookShare" href="#" target="_blank"><img src="icons/facebook.png" alt="Facebook"></a>
-                        <a id="gmailShare" href="#" target="_blank"><img src="icons/gmail.png" alt="Gmail"></a>
-                        <a id="linkedinShare" href="#" target="_blank"><img src="icons/linkedin.png" alt="LinkedIn"></a>
+                        <button class="p2p-accept-btn" id="p2pAcceptBtn">Accept & Download</button>
+                        <button class="dl-back-btn" onclick="exitP2PReceive()">Decline</button>
                     </div>
                 </div>
-            </div>
 
-        </div>
-
-    </section>
-
-
-    <section id="about" class="about-page">
-
-        <h1 class="about-heading">About</h1>
-
-        <div class="about-container">
-
-            <div class="about-card">
-
-                <div class="highlight">MAYANK</div>
-
-                <p>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Ducimus aliquid soluta quis commodi voluptates perspiciatis
-                    vel nam tenetur.
-                </p>
-
-            </div>
-
-
-            <div class="about-card">
-
-                <div class="highlight">RITWIK</div>
-
-                <p>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Quasi molestias consequuntur distinctio officia animi sequi
-                    eaque ipsum iusto!
-                </p>
-
-            </div>
-
-
-            <div class="about-card">
-
-                <div class="highlight">ADARSH</div>
-
-                <p>
-                    Lorem ipsum dolor sit amet consectetur adipisicing elit.
-                    Numquam vel vero harum ab nihil et atque aperiam possimus
-                    aliquid maiores?
-                </p>
+                <!-- Step 4: Transfer in progress -->
+                <div id="p2pTransferStep" class="hidden">
+                    <div class="p2p-transfer-card">
+                        <div class="p2p-transfer-status" id="p2pTransferStatus">Connecting…</div>
+                        <div class="p2p-transfer-progress">
+                            <div class="p2p-transfer-bar" id="p2pTransferBar"></div>
+                        </div>
+                        <div class="p2p-transfer-info" id="p2pTransferInfo">Establishing peer connection…</div>
+                    </div>
+                </div>
 
             </div>
 
@@ -219,70 +369,142 @@
     </section>
 
 
-    <section id="developers" class="developers">
+    <!-- ══════════ FEATURES ══════════ -->
+    <section id="about" class="features">
 
-        <h2>Developers</h2>
-
-        <div class="gdg-logo">
-            <img src="gdg-logo.png" alt="GDG Logo">
+      <div class="cards">
+        <!-- Card 1: Instant Rooms -->
+        <div class="card" onmousemove="spotlight(event,this)">
+          <div class="card-spotlight"></div>
+          <div class="card-visual">
+            <div style="position:absolute;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px">
+              <div style="font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:300;letter-spacing:0.25em;color:var(--s7)">A3F9K2</div>
+              <div style="display:flex;gap:6px">
+                <span style="font-family:'DM Mono',monospace;font-size:0.55rem;color:var(--s5);letter-spacing:0.1em;border:1px solid var(--s4);padding:2px 8px;border-radius:999px">6h left</span>
+                <span style="font-family:'DM Mono',monospace;font-size:0.55rem;color:#22c55e;letter-spacing:0.1em;border:1px solid rgba(34,197,94,0.25);padding:2px 8px;border-radius:999px">● live</span>
+              </div>
+            </div>
+            <div class="mini-node" style="top:28px;left:28px"></div>
+            <div class="mini-node" style="bottom:28px;right:28px"></div>
+            <div class="mini-node" style="top:28px;right:40px;width:5px;height:5px"></div>
+          </div>
+          <div class="card-body">
+            <span class="card-num">01</span>
+            <h3 class="card-title">Instant rooms</h3>
+            <p class="card-desc">Spin up a temporary room in one click. No sign-up, no dashboard — just a 6-character code and a countdown.</p>
+          </div>
         </div>
 
-
-        <div class="dev-grid">
-
-            <div class="dev-card">
-                <img src="dev1.jpg" alt="Developer 1">
-                <h3>Developer 1</h3>
-                <p>dev1@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev2.jpg" alt="Developer 2">
-                <h3>Developer 2</h3>
-                <p>dev2@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev3.jpg" alt="Developer 3">
-                <h3>Developer 3</h3>
-                <p>dev3@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev4.jpg" alt="Developer 4">
-                <h3>Developer 4</h3>
-                <p>dev4@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev5.jpg" alt="Developer 5">
-                <h3>Developer 5</h3>
-                <p>dev5@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev6.jpg" alt="Developer 6">
-                <h3>Developer 6</h3>
-                <p>dev6@email.com</p>
-            </div>
-
-            <div class="dev-card">
-                <img src="dev7.jpg" alt="Developer 7">
-                <h3>Developer 7</h3>
-                <p>dev7@email.com</p>
-            </div>
-
+        <!-- Card 2: P2P -->
+        <div class="card" onmousemove="spotlight(event,this)">
+          <div class="card-spotlight"></div>
+          <div class="card-visual">
+            <svg style="position:absolute;inset:0;width:100%;height:100%;z-index:1" viewBox="0 0 240 160" fill="none">
+              <circle cx="60" cy="80" r="18" stroke="#2e2e2e" stroke-width="1"/>
+              <circle cx="60" cy="80" r="10" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+              <text x="60" y="84" text-anchor="middle" font-family="DM Mono" font-size="7" fill="#555">YOU</text>
+              <circle cx="180" cy="80" r="18" stroke="#2e2e2e" stroke-width="1"/>
+              <circle cx="180" cy="80" r="10" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1"/>
+              <text x="180" y="84" text-anchor="middle" font-family="DM Mono" font-size="7" fill="#555">PEER</text>
+              <line x1="78" y1="80" x2="162" y2="80" stroke="#2e2e2e" stroke-width="1" stroke-dasharray="4 4">
+                <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="1.2s" repeatCount="indefinite"/>
+              </line>
+              <circle cx="120" cy="80" r="3" fill="#484848">
+                <animateMotion dur="1.8s" repeatCount="indefinite" path="M-42,0 L42,0"/>
+              </circle>
+              <text x="120" y="106" text-anchor="middle" font-family="DM Mono" font-size="6" fill="#3a3a3a" letter-spacing="2">DIRECT</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <span class="card-num">02</span>
+            <h3 class="card-title">Peer-to-peer transfer</h3>
+            <p class="card-desc">Files flow directly between devices, end-to-end encrypted. Nothing lingers on a server longer than your room lives.</p>
+          </div>
         </div>
 
-
-        <p class="contact-info">Contact us: contact@dropbeam.dev</p>
-
+        <!-- Card 3: Auto-expiry -->
+        <div class="card" onmousemove="spotlight(event,this)">
+          <div class="card-spotlight"></div>
+          <div class="card-visual">
+            <svg style="position:absolute;inset:0;width:100%;height:100%;z-index:1" viewBox="0 0 240 160" fill="none">
+              <circle cx="120" cy="80" r="38" stroke="#222222" stroke-width="1"/>
+              <circle cx="120" cy="80" r="30" stroke="#2a2a2a" stroke-width="0.5" stroke-dasharray="3 3"/>
+              <line x1="120" y1="46" x2="120" y2="52" stroke="#333" stroke-width="1"/>
+              <line x1="120" y1="108" x2="120" y2="114" stroke="#333" stroke-width="1"/>
+              <line x1="82" y1="80" x2="88" y2="80" stroke="#333" stroke-width="1"/>
+              <line x1="152" y1="80" x2="158" y2="80" stroke="#333" stroke-width="1"/>
+              <line x1="120" y1="80" x2="120" y2="58" stroke="#484848" stroke-width="1.5" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 120 80" to="360 120 80" dur="12s" repeatCount="indefinite"/>
+              </line>
+              <line x1="120" y1="80" x2="138" y2="80" stroke="#383838" stroke-width="1" stroke-linecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 120 80" to="360 120 80" dur="60s" repeatCount="indefinite"/>
+              </line>
+              <circle cx="120" cy="80" r="2.5" fill="#555"/>
+              <text x="120" y="135" text-anchor="middle" font-family="DM Mono" font-size="6.5" fill="#333" letter-spacing="2">AUTO-PURGE</text>
+            </svg>
+          </div>
+          <div class="card-body">
+            <span class="card-num">03</span>
+            <h3 class="card-title">Auto-expiry & cleanup</h3>
+            <p class="card-desc">Set a 1–12 hour window. When the timer hits zero, the room closes and all files are wiped automatically.</p>
+          </div>
+        </div>
+      </div>
     </section>
+
+    <!-- ══════════ FOOTER ══════════ -->
+    <footer id="developers" class="footer-wrap">
+      <div class="footer-top">
+
+        <!-- GDG col -->
+        <div class="gdg-col">
+          <div class="gdg-logo-row">
+            <img class="gdg-logo-img" src="assets/gdg.png" alt="GDG Logo">
+            <div class="gdg-name-col">
+              <span class="gdg-sup">Google Developer Groups</span>
+              <span class="gdg-main">GDG On Campus · KIIT</span>
+            </div>
+          </div>
+
+          <p class="gdg-desc">A student developer community at Kalinga Institute of Industrial Technology, Bhubaneswar - building, learning, and shipping together.</p>
+
+          <div class="gdg-links">
+            <a class="gdg-link" href="https://gdg.community.dev/gdg-on-campus-kalinga-institute-of-industrial-technology-bhubaneswar-india/" target="_blank" rel="noopener">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              GDG Community Chapter
+            </a>
+            <a class="gdg-link" href="https://gdg-kiit.vercel.app/" target="_blank" rel="noopener">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              gdg-kiit.vercel.app
+            </a>
+          </div>
+        </div>
+
+        <!-- Devs col -->
+        <div class="devs-col">
+          <div class="devs-top-label">
+            <span class="devs-sup">Built by GDG Cloud Team</span>
+            <div class="tw-line" id="twLine"><span class="tw-cursor"></span></div>
+          </div>
+
+          <div class="avatar-section">
+            <div class="avatar-strip" id="avatarStrip">
+              <!-- avatars injected by JS -->
+            </div>
+            <div id="devCardWrap"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span class="footer-copy">© 2026 Dropbeam · GDG On Campus KIIT, Bhubaneswar</span>
+      </div>
+    </footer>
 
 
     <div id="toast">Link Copied!</div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 
 </body>
 

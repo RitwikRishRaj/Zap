@@ -12,7 +12,7 @@
  * so idle connections cost 0 CPU / GB-sec while remaining open.
  *
  * WebSocket message protocol is identical to the Node.js backend,
- * so the frontend (socket.js) requires no changes.
+ * so the frontend (script.js) requires no changes.
  */
 
 // ID Generators

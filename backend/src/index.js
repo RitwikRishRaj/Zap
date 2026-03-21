@@ -17,7 +17,7 @@ export { ZapHub };
 
 // Constants
 
-const MAX_FILE_SIZE_GB  = 2;
+const MAX_FILE_SIZE_GB  = 2.2;
 const MAX_STORAGE_GB    = 8;
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -97,6 +97,7 @@ export default {
     if (path === '/api/download-url'    && method === 'POST') return handleDownloadUrl(request, env);
     if (path === '/api/upload-complete' && method === 'POST') return handleUploadComplete(request, env);
     if (path === '/api/validate-file'   && method === 'POST') return handleValidateFile(request, env);
+    if (path === '/api/encryption-key'  && method === 'GET')  return handleEncryptionKey(env);
     if (path === '/api/storage-stats'   && method === 'GET')  return handleStorageStats(env);
 
     if (path === '/api/room-stats' && method === 'GET') {
@@ -128,9 +129,10 @@ export default {
     if (path === '/api/room/upload'          && method === 'POST') return cloudHoldUpload(request, env);
     if (path === '/api/room/upload-complete' && method === 'POST') return cloudHoldUploadComplete(request, env);
 
-    // GET /api/room/:code
+    // GET or DELETE /api/room/:code
     const roomMatch = path.match(/^\/api\/room\/([A-Z0-9]{6})$/);
     if (method === 'GET' && roomMatch) return cloudHoldGetRoom(roomMatch[1], env);
+    if (method === 'DELETE' && roomMatch) return cloudHoldDeleteRoom(request, roomMatch[1], env);
 
     // GET /api/room/:code/download/:fileId
     const downloadMatch = path.match(/^\/api\/room\/([A-Z0-9]{6})\/download\/(.+)$/);
@@ -284,6 +286,13 @@ async function handleValidateFile(request, env) {
   return json({ valid: true, message: 'File validation passed' });
 }
 
+async function handleEncryptionKey(env) {
+  const pwd = env.ENCRYPTION_PASSWORD || 'default_zap_encryption_key';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwd));
+  const keyHex = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return json({ keyHex });
+}
+
 async function handleStorageStats(env) {
   const usage     = parseInt((await env.ROOMS_KV.get('r2_usage_bytes')) || '0');
   const maxBytes  = MAX_STORAGE_GB * 1024 * 1024 * 1024;
@@ -316,8 +325,6 @@ function formatBytes(bytes) {
 // Uses env.ROOMS (KV) for room metadata and env.FILES (R2) for file storage.
 // Binding names and R2 key format match the deployed cloud-hold-worker.
 
-const VALID_EXPIRY_SECONDS = { 7200: '2 hours', 14400: '4 hours', 43200: '12 hours', 86400: '24 hours' };
-
 function cloudRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -335,8 +342,8 @@ async function cloudHoldCreateRoom(request, env) {
 
   const { name, expiry } = body;
   if (!name || typeof name !== 'string' || !name.trim()) return err('Name is required');
-  if (!expiry || !VALID_EXPIRY_SECONDS[expiry]) {
-    return err(`Invalid expiry. Must be one of: ${Object.keys(VALID_EXPIRY_SECONDS).join(', ')} (seconds)`);
+  if (!expiry || typeof expiry !== 'number' || expiry < 3600 || expiry > 86400 * 7) {
+    return err(`Invalid expiry. Must be between 1 hour and 7 days (in seconds).`);
   }
 
   // Generate unique 6-char code
@@ -350,8 +357,11 @@ async function cloudHoldCreateRoom(request, env) {
 
   if (attempts >= 5) return err('Failed to generate unique room code. Try again.', 500);
 
+  const adminToken = cloudFileId(); // reuse random char generator
+
   const roomData = {
     name: name.trim(), code, files: [],
+    adminToken,
     createdAt: Date.now(),
     expiresAt: Date.now() + expiry * 1000,
     expirySeconds: expiry,
@@ -359,7 +369,8 @@ async function cloudHoldCreateRoom(request, env) {
 
   await env.ROOMS.put(`room:${code}`, JSON.stringify(roomData), { expirationTtl: expiry });
 
-  return json({ code, name: roomData.name, expiresAt: roomData.expiresAt, expiresIn: VALID_EXPIRY_SECONDS[expiry] }, 201);
+  const hrs = Math.round(expiry / 3600);
+  return json({ code, adminToken, name: roomData.name, expiresAt: roomData.expiresAt, expiresIn: `${hrs} hours` }, 201);
 }
 
 async function cloudHoldUpload(request, env) {
@@ -374,10 +385,10 @@ async function cloudHoldUpload(request, env) {
 
   const room = JSON.parse(roomJson);
 
-  const maxFiles = parseInt(env.MAX_ROOM_FILES) || 10;
+  const maxFiles = parseInt(env.MAX_ROOM_FILES) || 2;
   if (room.files.length >= maxFiles) return err(`Maximum ${maxFiles} files per room`);
 
-  const maxSizeMB = parseInt(env.MAX_FILE_SIZE_MB) || 2048;
+  const maxSizeMB = parseInt(env.MAX_FILE_SIZE_MB) || 2252;
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
   if (fileSize > maxSizeBytes) return err(`File too large. Maximum ${maxSizeMB}MB`);
 
@@ -386,20 +397,36 @@ async function cloudHoldUpload(request, env) {
 
   let uploadUrl;
   let uploadMethod = 'worker'; // tells client which flow to follow
+  let uploadUrls = [];
+  let uploadId = null;
 
-  // If R2 credentials are configured → presigned URL so client uploads
-  // DIRECTLY to R2 — no Worker in the data path, no 100MB limit.
+  // If R2 credentials are configured → use Multipart Presigned URLs to bypass 100MB limit securely
   if (env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY) {
-    uploadUrl = await generateR2PresignedUrl(env, r2Key, contentType, 3600);
-    uploadMethod = 'presigned';
+    uploadMethod = 'multipart';
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks chosen for optimal AES-GCM streaming balance
+    const numChunks = Math.ceil(fileSize / CHUNK_SIZE) || 1;
+
+    // Use Cloudflare's native R2 Binding to initiate
+    const multipart = await env.FILES.createMultipartUpload(r2Key, {
+      httpMetadata: { contentType },
+      customMetadata: { roomCode: code, fileName: decodedFileName, fileId, uploadedAt: Date.now().toString() }
+    });
+    uploadId = multipart.uploadId;
+
+    for (let i = 1; i <= numChunks; i++) {
+      uploadUrls.push(await generateR2PresignedUrl(env, r2Key, contentType, 3600, 'PUT', {
+        partNumber: String(i),
+        uploadId: uploadId
+      }));
+    }
   } else {
     // Local dev fallback: Worker-proxied upload (fine for files ≤100 MB)
     const workerUrl = new URL(request.url);
     workerUrl.pathname = `/api/room/upload-file/${code}/${fileId}/${encodeURIComponent(fileName)}`;
-    uploadUrl = workerUrl.toString();
+    uploadUrls = [workerUrl.toString()];
   }
 
-  return json({ fileId, r2Key, uploadUrl, uploadMethod, maxSize: maxSizeBytes });
+  return json({ fileId, r2Key, uploadUrls, uploadMethod, uploadId, maxSize: maxSizeBytes });
 }
 
 
@@ -433,20 +460,33 @@ async function cloudHoldUploadComplete(request, env) {
   let body;
   try { body = await request.json(); } catch { return err('Invalid JSON body'); }
 
-  const { code, fileId, fileName, fileSize } = body;
+  const { code, fileId, fileName, fileSize, uploadId, parts } = body;
   if (!code || !fileId) return err('Missing required fields: code, fileId');
 
   const roomJson = await env.ROOMS.get(`room:${code}`);
   if (!roomJson) return err('Room not found or expired', 404);
 
   const room = JSON.parse(roomJson);
+  const r2Key = `rooms/${code}/${fileId}-${fileName}`;
+
+  // If multipart was used, complete it via the native binding
+  if (uploadId && parts && parts.length > 0) {
+    try {
+      const multipart = env.FILES.resumeMultipartUpload(r2Key, uploadId);
+      // R2 expects { partNumber: number, etag: string }
+      await multipart.complete(parts.map(p => ({ partNumber: parseInt(p.partNumber), etag: p.etag })));
+    } catch (e) {
+      console.error('Multipart complete failed:', e);
+      return err('Failed to complete multipart upload', 500);
+    }
+  }
 
   // Idempotency: skip if already recorded
   if (room.files.some(f => f.id === fileId)) {
     return json({ success: true, message: 'File already recorded' });
   }
 
-  room.files.push({ id: fileId, name: fileName, size: fileSize, r2Key: `rooms/${code}/${fileId}-${fileName}`, uploadedAt: Date.now() });
+  room.files.push({ id: fileId, name: fileName, size: fileSize, r2Key, uploadedAt: Date.now() });
 
   const remainingTtl = Math.max(60, Math.floor((room.expiresAt - Date.now()) / 1000));
   await env.ROOMS.put(`room:${code}`, JSON.stringify(room), { expirationTtl: remainingTtl });
@@ -466,6 +506,29 @@ async function cloudHoldGetRoom(code, env) {
     createdAt: room.createdAt, expiresAt: room.expiresAt,
     timeRemaining: Math.max(0, room.expiresAt - Date.now()),
   });
+}
+
+async function cloudHoldDeleteRoom(request, code, env) {
+  const roomJson = await env.ROOMS.get(`room:${code}`);
+  if (!roomJson) return json({ success: true }); // idempotent
+
+  const room = JSON.parse(roomJson);
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader !== `Bearer ${room.adminToken}`) {
+    return err('Unauthorized: missing or invalid admin token', 401);
+  }
+
+  // Delete all files in R2 associated with this room
+  for (const file of room.files) {
+    if (file.r2Key) {
+      await env.FILES.delete(file.r2Key).catch(() => {});
+    }
+  }
+
+  // Delete the room from KV
+  await env.ROOMS.delete(`room:${code}`);
+
+  return json({ success: true, message: 'Room deleted safely' });
 }
 
 async function cloudHoldDownload(code, fileId, env) {
@@ -508,7 +571,7 @@ async function cloudHoldDownload(code, fileId, env) {
 //   npx wrangler secret put R2_ACCESS_KEY_ID
 //   npx wrangler secret put R2_SECRET_ACCESS_KEY
 
-async function generateR2PresignedUrl(env, r2Key, contentType, expiresInSec = 3600, method = 'PUT') {
+async function generateR2PresignedUrl(env, r2Key, contentType, expiresInSec = 3600, method = 'PUT', extraQueryParams = {}) {
   const accountId     = env.R2_ACCOUNT_ID;
   const accessKeyId   = env.R2_ACCESS_KEY_ID;
   const secretKey     = env.R2_SECRET_ACCESS_KEY;
@@ -536,7 +599,13 @@ async function generateR2PresignedUrl(env, r2Key, contentType, expiresInSec = 36
     ['X-Amz-Date',          datetime],
     ['X-Amz-Expires',       String(expiresInSec)],
     ['X-Amz-SignedHeaders', 'host'],
-  ].sort((a, b) => a[0].localeCompare(b[0]));
+  ];
+  
+  for (const [k, v] of Object.entries(extraQueryParams)) {
+    queryParams.push([k, v]);
+  }
+  
+  queryParams.sort((a, b) => a[0].localeCompare(b[0]));
 
   const queryString = queryParams
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
