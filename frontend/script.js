@@ -1273,7 +1273,7 @@ function spotlight(e, card) {
 }
 
 /* ── Tesstimonial Typewriter ─────────────────────────────── */
-const phrases = ['students who ship.','the GDG Cloud Team.','the team behind DropBeam.'];
+const phrases = ['students who ship.','the GDG Cloud Team.','the team behind Zap.'];
 let pi=0,ci=0,del=false;
 const twEl = document.getElementById('twLine');
 function pTick() {
