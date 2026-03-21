@@ -10,6 +10,7 @@ pnpm-debug.log*
 
 # Wrangler / Cloudflare Workers 
 .wrangler/
+backend/wrangler.toml
 .dev.vars          # local secret overrides (never commit secrets!)
 .dev.vars.*
 dist/
