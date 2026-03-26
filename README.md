@@ -35,7 +35,6 @@ Zap is a no-signup file transfer tool with two modes:
 - 📶 **Connection quality badge** — shows Direct/Relayed and round-trip time in real time
 - 🧹 **Auto-purge** — cron trigger every 10 min deletes expired rooms and R2 objects
 - 📱 **QR sharing** — shareable link with QR code for P2P sessions
-- 🌓 **Dark / light mode** — persisted via `localStorage`
 - 🗂️ **Active rooms panel** — browser-local session cache with live expiry countdowns
 
 ---
