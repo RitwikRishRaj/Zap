@@ -1,0 +1,57 @@
+name = "zap"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Serve the frontend as static assets
+# wrangler dev will serve frontend/ on localhost:8787 alongside the Worker.
+# Static files are served first; unmatched paths fall through to the Worker.
+[assets]
+directory = "../frontend"
+
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "ZapHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ZapHub"]
+
+# R2 Bucket (file storage)
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "your-r2-bucket-name"
+preview_bucket_name = "your-r2-bucket-name-preview"
+
+# KV (storage usage counter)
+[[kv_namespaces]]
+binding = "ROOMS_KV"
+id = "YOUR_KV_NAMESPACE_ID"
+preview_id = "YOUR_KV_PREVIEW_NAMESPACE_ID"
+
+# KV (cloud-hold room metadata)
+[[kv_namespaces]]
+binding = "ROOMS"
+id = "YOUR_ROOMS_KV_NAMESPACE_ID"
+preview_id = "YOUR_KV_PREVIEW_NAMESPACE_ID"
+
+# Cron: cleanup every 10 minutes
+[triggers]
+crons = ["*/10 * * * *"]
+
+# Environment Variables
+[vars]
+MAX_ROOMS_PER_IP        = "10"
+DEFAULT_ROOM_TTL_HOURS  = "24"
+MAX_R2_STORAGE_GB       = "8"
+MAX_R2_FILE_SIZE_GB     = "2"
+MAX_CONCURRENT_RELAYS   = "3"
+RATE_LIMIT_WINDOW_MS    = "900000"
+RATE_LIMIT_MAX_REQUESTS = "100"
+MAX_FILE_SIZE_MB        = "2252"
+MAX_ROOM_FILES          = "2"
+
+# Cloudflare Calls TURN (optional — get from dash.cloudflare.com > Calls)
+# CF_TURN_KEY_ID    = "YOUR_TURN_KEY_ID"
+# CF_TURN_API_TOKEN = "YOUR_TURN_API_TOKEN"
